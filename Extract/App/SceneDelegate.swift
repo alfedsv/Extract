@@ -11,12 +11,37 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     var window: UIWindow?
 
+    /// Корневой координатор держим сильно — он живёт весь жизненный цикл сцены.
+    private var appCoordinator: AppCoordinator?
 
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
-        // Use this method to optionally configure and attach the UIWindow `window` to the provided UIWindowScene `scene`.
-        // If using a storyboard, the `window` property will automatically be initialized and attached to the scene.
-        // This delegate does not imply the connecting scene or session are new (see `application:configurationForConnectingSceneSession` instead).
-        guard let _ = (scene as? UIWindowScene) else { return }
+        guard let windowScene = scene as? UIWindowScene else { return }
+
+        // MARK: Composition root
+
+        let keychain = KeychainStorage()
+        let authService = AuthService(storage: keychain)
+        let viewModelFactory = AppViewModelFactory(authService: authService)
+
+        // Корневой навигационный контроллер.
+        // Системный бар скрываем — используем кастомный.
+        let navigationController = UINavigationController()
+        navigationController.setNavigationBarHidden(true, animated: false)
+
+        // Корневой координатор.
+        let appCoordinator = AppCoordinator(
+            navigationController: navigationController,
+            viewModelFactory: viewModelFactory
+        )
+        self.appCoordinator = appCoordinator
+        appCoordinator.start()
+
+        // MARK: Window
+
+        let window = UIWindow(windowScene: windowScene)
+        window.rootViewController = navigationController
+        window.makeKeyAndVisible()
+        self.window = window
     }
 
     func sceneDidDisconnect(_ scene: UIScene) {
