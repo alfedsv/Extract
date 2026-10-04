@@ -22,6 +22,9 @@ enum Icons {
     enum Bars {
         enum Navigation: String, ImagePath {
             case back = "Bars/Navigation/back"
+            case home = "Bars/Navigation/home"
+            case chats = "Bars/Navigation/chats"
+            case dots = "Bars/Navigation/dots"
         }
 
         enum Entrance: String, ImagePath {

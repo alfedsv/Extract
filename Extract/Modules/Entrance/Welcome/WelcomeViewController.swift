@@ -21,7 +21,9 @@ final class WelcomeViewController: BaseViewController {
     
     // MARK: - Lifecycle
     
-    init() {
+
+    init(viewModel: WelcomeViewModel) {
+        self.viewModel = viewModel
         self.buttons = [
             WelcomeButtonImageView(command: .login),
             WelcomeButtonImageView(command: .registrate),

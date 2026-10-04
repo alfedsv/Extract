@@ -9,7 +9,12 @@ import UIKit
 
 final class HomeViewController: BaseHomeViewController {
 
-    var viewModel: HomeViewModel!
+    var viewModel: HomeViewModel
+    
+    init(viewModel: HomeViewModel) {
+        self.viewModel = viewModel
+        super.init(nibName: nil, bundle: nil)
+    }
     
     override func viewDidLoad() {
         super.viewDidLoad()

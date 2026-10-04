@@ -47,8 +47,7 @@ final class AuthCoordinator: Coordinator {
 
     private func showWelcome() {
         let vm = viewModelFactory.makeWelcomeViewModel()
-        let vc = WelcomeViewController()
-        vc.viewModel = vm
+        let vc = WelcomeViewController(viewModel: vm)
 
         vm.onLoginTap    = { [weak self] in self?.showLogin() }
         vm.onRegisterTap = { [weak self] in self?.showRegister() }
@@ -61,8 +60,7 @@ final class AuthCoordinator: Coordinator {
 
     private func showLogin() {
         let vm = viewModelFactory.makeLoginViewModel()
-        let vc = LoginViewController()
-        vc.viewModel = vm
+        let vc = LoginViewController(viewModel: vm)
         vm.onLoginSuccess = { [weak self] in self?.onFinish?() }
         // Кнопка «назад» на логине ведёт обратно на welcome.
         vm.onBack = { [weak self] in self?.navigationController.popViewController(animated: true) }
@@ -73,8 +71,7 @@ final class AuthCoordinator: Coordinator {
 
     private func showRegister() {
         let vm = viewModelFactory.makeRegistrationViewModel()
-        let vc = RegistrationViewController()
-        vc.viewModel = vm
+        let vc = RegistrationViewController(viewModel: vm)
         vm.onRegisterSuccess = { [weak self] in self?.onFinish?() }
         vm.onBack = { [weak self] in self?.navigationController.popViewController(animated: true) }
         navigationController.pushViewController(vc, animated: true)
