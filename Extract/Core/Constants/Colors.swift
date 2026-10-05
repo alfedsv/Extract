@@ -29,12 +29,12 @@ enum Colors {
             case text = "Buttons/LargeButton/text"
             enum Background {
                 enum Enabled: String, ColorPath {
-                    case normal = "Buttons/Background/LargeButton/normal"
-                    case selected = "Buttons/Background/LargeButton/selected"
+                    case normal = "Buttons/LargeButton/Background/Enabled/normal"
+                    case selected = "Buttons/LargeButton/Background/Enabled/selected"
                 }
                 enum Disabled: String, ColorPath {
-                    case normal = "Buttons/Background/LargeButton/normal"
-                    case selected = "Buttons/Background/LargeButton/selected"
+                    case normal = "Buttons/LargeButton/Background/Disabled/normal"
+                    case selected = "Buttons/LargeButton/Background/Disabled/selected"
                 }
             }
         }

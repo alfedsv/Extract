@@ -9,7 +9,7 @@ import UIKit
 
 final class WelcomeViewController: BaseViewController {
     
-    var viewModel: WelcomeViewModel!
+    private let viewModel: WelcomeViewModel
     
     // MARK: - UI
 

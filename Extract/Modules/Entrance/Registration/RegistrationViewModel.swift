@@ -50,13 +50,13 @@ final class RegistrationViewModel {
         // 2. Запрос.
         onLoading?(true)
         Task { @MainActor in
-            defer { self.onLoading?(false) }
+            /*defer { self.onLoading?(false) }
             do {
                 try await authService.register(username: username, password: password)
                 onRegisterSuccess?()
             } catch {
                 onError?(error.localizedDescription)
-            }
+            }*/
         }
     }
 

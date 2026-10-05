@@ -11,32 +11,25 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     var window: UIWindow?
 
-    /// Корневой координатор держим сильно — он живёт весь жизненный цикл сцены.
     private var appCoordinator: AppCoordinator?
+    private let dependencies = AppDependencies()
 
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         guard let windowScene = scene as? UIWindowScene else { return }
 
-        // MARK: Composition root
+        // MARK: - Composition root
 
-        let keychain = KeychainStorage()
-        let authService = AuthService(storage: keychain)
-        let viewModelFactory = AppViewModelFactory(authService: authService)
-
-        // Корневой навигационный контроллер.
-        // Системный бар скрываем — используем кастомный.
         let navigationController = UINavigationController()
         navigationController.setNavigationBarHidden(true, animated: false)
 
-        // Корневой координатор.
         let appCoordinator = AppCoordinator(
             navigationController: navigationController,
-            viewModelFactory: viewModelFactory
+            viewModelFactory: dependencies.viewModelFactory
         )
         self.appCoordinator = appCoordinator
         appCoordinator.start()
 
-        // MARK: Window
+        // MARK: - Window
 
         let window = UIWindow(windowScene: windowScene)
         window.rootViewController = navigationController

@@ -14,7 +14,7 @@ protocol ViewModelFactory {
 
     // Entrance
     func makeWelcomeViewModel() -> WelcomeViewModel
-    func makeLoginViewModel() -> LoginViewModel
+    func makeLoginViewModel() -> AuthViewModel
     func makeRegistrationViewModel() -> RegistrationViewModel
 
     // Main
@@ -41,8 +41,8 @@ final class AppViewModelFactory: ViewModelFactory {
         WelcomeViewModel()   // без зависимостей — просто пробрасывает события
     }
 
-    func makeLoginViewModel() -> LoginViewModel {
-        LoginViewModel(authService: authService)
+    func makeLoginViewModel() -> AuthViewModel {
+        AuthViewModel(authService: authService)
     }
 
     func makeRegistrationViewModel() -> RegistrationViewModel {

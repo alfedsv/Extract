@@ -15,6 +15,7 @@ enum Layout {
     static let navigationBarIconSide: CGFloat = 35
 
     static let largeButtonHeight: CGFloat = 50
+    static let largeButtonRadius: CGFloat = 10
     static let sideOutsetStandart: CGFloat = 25
     
     enum Welcome {

@@ -35,8 +35,7 @@ final class AppCoordinator: Coordinator {
 
     private func showSplash() {
         let vm = viewModelFactory.makeSplashViewModel()
-        let vc = SplashViewController()
-        vc.viewModel = vm
+        let vc = SplashViewController(viewModel: vm)
 
         // Подписываемся ДО того, как VC вызовет check() в viewDidAppear.
         vm.onResult = { [weak self] isAuthorized in
