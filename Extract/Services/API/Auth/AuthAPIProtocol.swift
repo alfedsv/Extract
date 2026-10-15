@@ -7,7 +7,7 @@
 
 import Foundation
 
-protocol AuthAPIProtocol {
+nonisolated protocol AuthAPIProtocol: Sendable {
     func revokeTokens(userId: Int) async throws
     func refreshAccessToken(refreshToken: String) async throws -> String
 }

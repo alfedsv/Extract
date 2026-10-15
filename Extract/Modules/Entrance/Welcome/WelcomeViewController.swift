@@ -31,7 +31,7 @@ final class WelcomeViewController: BaseViewController {
             WelcomeButtonImageView(command: .representers)
         ]
         self.stackView = UIStackView(arrangedSubviews: buttons)
-        super.init(nibName: nil, bundle: nil)
+        super.init(viewModel: viewModel)
         for button in buttons {
             button.delegate = self
         }

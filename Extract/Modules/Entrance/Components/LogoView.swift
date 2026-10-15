@@ -25,7 +25,7 @@ final class LogoView: UIView {
         label.textAlignment = .center
         label.text = "E X T R A C T"
         label.font = .systemFont(ofSize: 16)
-        label.textColor = Colors.Text.textCommon.color
+        label.textColor = Colors.Text.common.color
         return label
     }()
     private var image: UIView = UILabel()

@@ -1,5 +1,5 @@
 //
-//  BaseEntranceViewController.swift
+//  BaseIdentityViewController.swift
 //  Extract
 //
 //  Created by  Alexander Fedoseev on 04.10.2026.
@@ -7,7 +7,7 @@
 
 import UIKit
 
-class BaseEntranceViewController: BaseViewController {
+class BaseIdentityViewController: BaseViewController {
 
     let navBar = IdentityNavBarView()
 
@@ -36,14 +36,17 @@ class BaseEntranceViewController: BaseViewController {
     }
     
     @objc private func keyboardWillShow() {
+        view.bringSubviewToFront(keyboardBackdrop)
         keyboardBackdrop.isHidden = false
     }
 
     @objc private func keyboardWillHide() {
         keyboardBackdrop.isHidden = true
+        view.sendSubviewToBack(keyboardBackdrop)
     }
 }
-private extension BaseEntranceViewController {
+
+private extension BaseIdentityViewController {
     func setupConstraints() {
         navBar.translatesAutoresizingMaskIntoConstraints = false
         keyboardBackdrop.translatesAutoresizingMaskIntoConstraints = false

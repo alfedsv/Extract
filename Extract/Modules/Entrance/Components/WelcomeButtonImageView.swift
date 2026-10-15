@@ -61,19 +61,19 @@ final class WelcomeButtonImageView: UIImageView {
     private func applyText() {
         switch command {
         case .login:
-            titleLabel.textColor = Colors.Text.textCommon.color
+            titleLabel.textColor = Colors.Text.common.color
             titleLabel.font = .systemFont(ofSize: 21)
             titleLabel.text = L10n.Entrance.Welcome.Button.login.localized
         case .registrate:
-            titleLabel.textColor = Colors.Text.textCommon.color
+            titleLabel.textColor = Colors.Text.common.color
             titleLabel.font = .systemFont(ofSize: 21)
             titleLabel.text = L10n.Entrance.Welcome.Button.registration.localized
         case .demo:
-            titleLabel.textColor = Colors.Text.textOrange.color
+            titleLabel.textColor = Colors.Text.orange.color
             titleLabel.font = .systemFont(ofSize: 21)
             titleLabel.text = L10n.Entrance.Welcome.Button.demo.localized
         case .representers:
-            titleLabel.textColor = Colors.Text.textCommon.color
+            titleLabel.textColor = Colors.Text.common.color
             titleLabel.font = .systemFont(ofSize: 19)
             titleLabel.text = L10n.Entrance.Welcome.Button.representers.localized
         case .lock:

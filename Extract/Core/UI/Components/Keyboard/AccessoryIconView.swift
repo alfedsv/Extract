@@ -7,9 +7,7 @@
 
 import UIKit
 
-final class AccessoryIconView: UIView {
-
-    var onTap: (() -> Void)?
+final class AccessoryIconView: TapView {
 
     var isEnabled: Bool = true {
         didSet {
@@ -25,7 +23,6 @@ final class AccessoryIconView: UIView {
     private let imageView: UIImageView = {
         let iv = UIImageView()
         iv.contentMode = .center
-        iv.translatesAutoresizingMaskIntoConstraints = false
         return iv
     }()
 
@@ -33,33 +30,33 @@ final class AccessoryIconView: UIView {
         self.enabledImage = enabledImage
         self.disabledImage = disabledImage
         super.init(frame: .zero)
-
         imageView.image = enabledImage
         imageView.isUserInteractionEnabled = false
         addSubview(imageView)
-
-        NSLayoutConstraint.activate([
-            imageView.leadingAnchor.constraint(equalTo: leadingAnchor),
-            imageView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            imageView.topAnchor.constraint(equalTo: topAnchor),
-            imageView.bottomAnchor.constraint(equalTo: bottomAnchor)
-        ])
-
-        let minW = widthAnchor.constraint(greaterThanOrEqualToConstant: 44)
-        let minH = heightAnchor.constraint(greaterThanOrEqualToConstant: 44)
-        minW.priority = .defaultHigh
-        minH.priority = .defaultHigh
-        NSLayoutConstraint.activate([minW, minH])
-
-        let tap = UITapGestureRecognizer(target: self, action: #selector(handleTap))
-        addGestureRecognizer(tap)
-        isUserInteractionEnabled = true
+        setupConstraints()
     }
 
     required init?(coder: NSCoder) { fatalError() }
 
-    @objc private func handleTap() {
-        guard isEnabled else { return }
-        onTap?()
+}
+private extension AccessoryIconView {
+    func setupConstraints() {
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        
+        let padding: CGFloat = 8
+        let minW = widthAnchor.constraint(greaterThanOrEqualToConstant: 44 + padding * 2)
+        let minH = heightAnchor.constraint(greaterThanOrEqualToConstant: 44)
+        minW.priority = .defaultHigh
+        minH.priority = .defaultHigh
+        
+        NSLayoutConstraint.activate([
+            minW,
+            minH,
+            imageView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: padding),
+            imageView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -padding),
+            imageView.topAnchor.constraint(equalTo: topAnchor),
+            imageView.bottomAnchor.constraint(equalTo: bottomAnchor)
+        ])
+
     }
 }

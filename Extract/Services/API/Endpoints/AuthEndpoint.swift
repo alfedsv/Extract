@@ -7,12 +7,12 @@
 
 import Foundation
 
-enum AuthEndpoint: Endpoint {
-    
-    var method: HTTPMethod { return .post }
-    
+nonisolated enum AuthEndpoint: Endpoint {
+
     case refreshToken(refreshToken: String)
     case revoke(userId: Int)
+
+    var method: HTTPMethod { .post }
 
     var path: String {
         switch self {
@@ -21,16 +21,12 @@ enum AuthEndpoint: Endpoint {
         }
     }
 
-    var parameters: [String: EndpointParameter]? {
+    var body: Data? {
         switch self {
-        case .refreshToken(let token):
-            return [
-                "refresh_token": .string(token)
-            ]
+        case .refreshToken(let refreshToken):
+            return encode(AuthRequest.RefreshToken(refreshToken: refreshToken))
         case .revoke(let userId):
-            return [
-                "user_id": .int(userId)
-            ]
+            return encode(AuthRequest.Revoke(userId: userId))
         }
     }
 
@@ -40,5 +36,15 @@ enum AuthEndpoint: Endpoint {
         case .revoke:       return .access
         }
     }
-}
 
+    // MARK: - Private
+
+    private func encode<T: Encodable>(_ value: T) -> Data? {
+        do {
+            return try JSONEncoder().encode(value)
+        } catch {
+            assertionFailure("Encode failed for \(self): \(error)")
+            return nil
+        }
+    }
+}

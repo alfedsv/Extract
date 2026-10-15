@@ -41,8 +41,10 @@ enum Colors {
     }
     
     enum Text: String, ColorPath {
-        case textCommon = "Text/common"
-        case textOrange = "Text/orange"
+        case common = "Text/common"
+        case orange = "Text/orange"
+        case error = "Text/error"
+        case helper = "Text/helper"
     }
     
     enum TextView: String, ColorPath {
@@ -62,11 +64,13 @@ enum Colors {
 }
 
 extension ColorPath {
-
     var color: UIColor {
         UIColor(named: self.rawValue) ?? .clear
     }
     var cgColor: CGColor {
         color.cgColor
+    }
+    func cgColor(with trait: UITraitCollection) -> CGColor {
+        color.resolvedColor(with: trait).cgColor
     }
 }

@@ -10,16 +10,13 @@ import Foundation
 nonisolated final class AuthorizedAPIClient: APIClientProtocol, Sendable {
 
     private let client: APIClientProtocol
-    private let tokenStorage: TokenStorageProtocol
     private let refresher: TokenRefresherProtocol
 
     init(
         client: APIClientProtocol,
-        tokenStorage: TokenStorageProtocol,
         refresher: TokenRefresherProtocol
     ) {
         self.client = client
-        self.tokenStorage = tokenStorage
         self.refresher = refresher
     }
 

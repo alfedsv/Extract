@@ -7,17 +7,8 @@
 
 import Foundation
 
-protocol AuthServiceProtocol {
-    /// Есть ли валидный refresh-токен.
-    /// Access может быть просрочен — его обновит `TokenRefresher` при следующем запросе.
+nonisolated protocol AuthServiceProtocol: Sendable {
     var isAuthorized: Bool { get }
-
-    /// Логин по логину и паролю.
-    func login(username: String, password: String) async throws
-
-    /// Регистрация.
-    //func register(_ model: [String: Any]) async throws // TODO: - [String: Any] вместо RegistratonModel пока для сборки
-
-    /// Выход. Отзывает токены на сервере (best effort), затем чистит локально.
+    func login(username: String, password: String) async throws -> User
     func logout() async
 }

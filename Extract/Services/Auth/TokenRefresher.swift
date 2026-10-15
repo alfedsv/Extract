@@ -10,12 +10,12 @@ import Foundation
 actor TokenRefresher: TokenRefresherProtocol {
 
     private let client: APIClientProtocol
-    private let tokenStorage: TokenStorageProtocol
+    private let sessionStore: SessionStoreProtocol
     private var ongoingTask: Task<Void, Error>?
 
-    init(client: APIClientProtocol, tokenStorage: TokenStorageProtocol) {
+    init(client: APIClientProtocol, sessionStore: SessionStoreProtocol) {
         self.client = client
-        self.tokenStorage = tokenStorage
+        self.sessionStore = sessionStore
     }
 
     func refresh() async throws {
@@ -29,18 +29,19 @@ actor TokenRefresher: TokenRefresherProtocol {
     }
 
     private func performRefresh() async throws {
-        guard let refreshToken = tokenStorage.refreshToken,
-              !tokenStorage.isRefreshTokenExpired()
+        guard
+            let session = sessionStore.current,
+            !session.isRefreshTokenExpired()
         else {
-            tokenStorage.clear()
+            sessionStore.clear()
             throw APIError.unauthorized(nil)
         }
 
         let response = try await client.request(
-            AuthEndpoint.refreshToken(refreshToken: refreshToken),
+            AuthEndpoint.refreshToken(refreshToken: session.refreshToken),
             as: AuthDTO.RefreshTokenResponse.self
         )
 
-        tokenStorage.accessToken = response.accessToken
+        try sessionStore.updateAccessToken(response.accessToken)
     }
 }

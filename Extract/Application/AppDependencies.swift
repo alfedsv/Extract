@@ -7,62 +7,96 @@
 
 import Foundation
 
-final class AppDependencies {
+
+nonisolated final class AppDependencies {
 
     // MARK: - Infrastructure
+    let logger: LoggerProtocol
+    let keychainStorage: KeychainStorageProtocol
+    let sessionStore: SessionStoreProtocol
+    let baseClient: APIClientProtocol
+    let authorizedClient: APIClientProtocol
 
-    private let logger: LoggerProtocol = {
-        #if DEBUG
-        return PrintLogger()
-        #else
-        return OSLogger()
-        #endif
-    }()
+    // MARK: - APIs
+    let authAPI: AuthAPIProtocol
+    let entranceAPI: EntranceAPIProtocol
 
-    private let baseURL = URL(string: "https://extract.moscow:8080/")!
-
-    // MARK: - Auth
-
-    lazy var tokenStorage: TokenStorageProtocol = TokenStorage(
-        keychain: KeychainStorage()
-    )
-
-    private lazy var baseClient: APIClientProtocol = APIClient(
-        baseURL: baseURL,
-        tokenStorage: tokenStorage,
-        logger: logger
-    )
-
-    private lazy var refresher: TokenRefresherProtocol = TokenRefresher(
-        client: baseClient,
-        tokenStorage: tokenStorage
-    )
-
-    private lazy var authorizedClient: APIClientProtocol = AuthorizedAPIClient(
-        client: baseClient,
-        tokenStorage: tokenStorage,
-        refresher: refresher
-    )
-
-    // MARK: - Domain APIs
-
-    lazy var auth: AuthAPIProtocol = AuthAPI(client: authorizedClient)
-
-    lazy var entrance: EntranceAPIProtocol = EntranceAPI(client: baseClient)
-
+    // MARK: - Repositories
+    let entranceRepository: EntranceRepositoryProtocol   // ← новое
+    let userRepository: UserRepositoryProtocol   // ← новое
 
     // MARK: - Services
+    let authService: AuthServiceProtocol
 
-    lazy var authService: AuthServiceProtocol = AuthService(
-        entranceAPI: entrance,
-        authAPI: auth,
-        tokenStorage: tokenStorage,
-        logger: logger
-    )
+    // MARK: - Factory
+    let viewModelFactory: AppViewModelFactory
 
-    // MARK: - Factories
+    init() {
+        // 1. Инфраструктура
+        let logger: LoggerProtocol = {
+            #if DEBUG
+            return PrintLogger()
+            #else
+            return OSLogger()
+            #endif
+        }()
 
-    lazy var viewModelFactory: AppViewModelFactory = AppViewModelFactory(
-        authService: authService
-    )
+        let keychainStorage = KeychainStorage()
+        let sessionStore = SessionStore(keychain: keychainStorage)
+
+        // 2. Клиенты
+        let baseClient = APIClient(
+            //baseURL: URL(string: "https://extract.moscow:8080/")!, // на время отключеного сервера
+            baseURL: URL(string: "https://alfedsv.lightboxapi.ru/")!,
+            sessionStore: sessionStore,
+            logger: logger
+        )
+
+        let refresher = TokenRefresher(
+            client: baseClient,
+            sessionStore: sessionStore
+        )
+
+        let authorizedClient = AuthorizedAPIClient(
+            client: baseClient,
+            refresher: refresher
+        )
+
+        // Доменные API
+        let authAPI = AuthAPI(client: authorizedClient)
+        let entranceAPI = EntranceAPI(client: baseClient)
+
+        // Репозитории
+        let entranceRepository = EntranceRepository(entranceAPI: entranceAPI)
+        let userRepository = UserRepository()
+
+        // Сервисы
+        let authService = AuthService(
+            entranceAPI: entranceAPI,
+            authAPI: authAPI,
+            sessionStore: sessionStore,
+            userRepository: userRepository,
+            logger: logger
+        )
+
+        // Фабрика VM
+        let viewModelFactory = AppViewModelFactory(
+            authService: authService,
+            entranceRepository: entranceRepository,
+            logger: logger
+        )
+
+        // Присваиваем
+        self.logger = logger
+        self.keychainStorage = keychainStorage
+        self.sessionStore = sessionStore
+        self.baseClient = baseClient
+        self.authorizedClient = authorizedClient
+        self.authAPI = authAPI
+        self.entranceAPI = entranceAPI
+        self.entranceRepository = entranceRepository
+        self.userRepository = userRepository
+        self.authService = authService
+        self.viewModelFactory = viewModelFactory
+    }
 }

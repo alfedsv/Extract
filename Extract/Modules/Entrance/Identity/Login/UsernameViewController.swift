@@ -1,5 +1,5 @@
 //
-//  LoginViewController.swift
+//  UsernameViewController.swift
 //  Extract
 //
 //  Created by  Alexander Fedoseev on 04.10.2026.
@@ -7,23 +7,24 @@
 
 import UIKit
 
-final class LoginViewController: BaseEntranceViewController {
+final class UsernameViewController: BaseIdentityViewController {
 
-    private let viewModel: AuthViewModel
-    private lazy var keyboardAccessory = KeyboardAccessoryView()
+    private let viewModel: UsernameViewModelProtocol
+    private lazy var keyboardAccessory = KeyboardAccessoryView(showsNavigation: false)
     
     // MARK: - UI
     
+    private let warningLabel = WarningHelperLabel(state: .warning)
     private let usernameTextView = IdentityTextView(textViewType: .username)
     private let logoView = LogoView()
-    private let nextButton = LargeButtonView(title: "234234", isActive: false)
+    private let nextButton = LargeButtonView(title: L10n.Entrance.Identity.Button.username.localized, isActive: false)
     
 
     // MARK: - Lifecycle
     
-    init(viewModel: AuthViewModel) {
+    init(viewModel: UsernameViewModelProtocol) {
         self.viewModel = viewModel
-        super.init(nibName: nil, bundle: nil)
+        super.init(viewModel: viewModel)
     }
     
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -40,6 +41,7 @@ final class LoginViewController: BaseEntranceViewController {
     // MARK: - Setup UI
 
     private func setupUI() {
+        view.addSubview(warningLabel)
         view.addSubview(usernameTextView)
         usernameTextView.delegate = self
         view.addSubview(logoView)
@@ -57,21 +59,31 @@ final class LoginViewController: BaseEntranceViewController {
             ThemeManager.shared.switchTheme()
         }
         
-        nextButton.onPressed = {
-            print("123234 dfgf jkl 546")
+        nextButton.onPressed = { [weak self] isActive in
+            if isActive {
+                guard let self = self else { return }
+                self.viewModel.nextTapped(username: self.usernameTextView.text)
+            }
         }
     }
 
     private func bindViewModel() {
-        viewModel.onError = { [weak self] message in
-            let alert = UIAlertController(title: nil, message: message, preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: "OK", style: .default))
-            self?.present(alert, animated: true)
+        viewModel.onWarning = { [weak self] warning in
+            if let warning = warning {
+                self?.showWarning(text: warning.message)
+                if warning.warning == .notUserExists {
+                    self?.nextButton.isActive = false
+                }
+            } else {
+                self?.showWarning(text: nil)
+            }
         }
-        viewModel.onLoading = { [weak self] isLoading in
-            /*isLoading ? self?.spinner.startAnimating() : self?.spinner.stopAnimating()
-            self?.loginButton.isEnabled = !isLoading*/
-        }
+        
+    }
+    
+    private func showWarning(text: String?) {
+        warningLabel.text = text ?? ""
+        usernameTextView.isError = (text != nil)
     }
 
     // MARK: - Keyboard
@@ -84,7 +96,7 @@ final class LoginViewController: BaseEntranceViewController {
 
 // MARK: - UITextViewDelegate
 
-extension LoginViewController: UITextViewDelegate {
+extension UsernameViewController: UITextViewDelegate {
 
     func textViewDidBeginEditing(_ textView: UITextView) {
         usernameTextView.setupAppearance()
@@ -96,13 +108,16 @@ extension LoginViewController: UITextViewDelegate {
 
     func textView(_ textView: UITextView, shouldChangeTextIn range: NSRange, replacementText text: String) -> Bool {
         if let textView = textView as? IdentityTextView {
-            return textView.shouldChange(in: range, replacementText: text)
+            let isValid = textView.shouldChange(in: range, replacementText: text)
+            viewModel.setupWarning(warning: isValid ? nil : .init(warning: .usernameNotValid, textViewType: .username))
+            return isValid
         }
         return true
     }
     
     func textViewDidChange(_ textView: UITextView) {
         if let textView = textView as? IdentityTextView {
+            nextButton.isActive = viewModel.isValidLength(text: textView.text)
             textView.setupAppearance()
         }
     }
@@ -111,9 +126,10 @@ extension LoginViewController: UITextViewDelegate {
 
 // MARK: - Layout
 
-private extension LoginViewController {
+private extension UsernameViewController {
     func setupConstraints() {
         [
+            warningLabel,
             usernameTextView,
             logoView,
             nextButton
@@ -122,7 +138,11 @@ private extension LoginViewController {
         }
 
         NSLayoutConstraint.activate([
-            usernameTextView.topAnchor.constraint(equalTo: contentTopAnchor, constant: 150),
+            warningLabel.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: Layout.sideOutsetStandart),
+            warningLabel.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -Layout.sideOutsetStandart),
+            warningLabel.bottomAnchor.constraint(equalTo: usernameTextView.topAnchor, constant: -5),
+            
+            usernameTextView.topAnchor.constraint(equalTo: contentTopAnchor, constant: Layout.Identity.loginTextViewTopOutset),
             usernameTextView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor, constant: Layout.sideOutsetStandart),
             usernameTextView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -Layout.sideOutsetStandart),
             

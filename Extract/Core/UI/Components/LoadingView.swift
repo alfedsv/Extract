@@ -29,8 +29,8 @@ final class LoadingView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 }
-extension LoadingView {
-    private func setupConstrains() {
+private extension LoadingView {
+    func setupConstrains() {
         activityIndicator.translatesAutoresizingMaskIntoConstraints = false
 
         NSLayoutConstraint.activate([

@@ -10,7 +10,7 @@ import UIKit
 
 final class LargeButtonView: UIView {
 
-    var onPressed: (() -> Void)?
+    var onPressed: ((Bool) -> Void)?
 
     var isActive: Bool {
         didSet {
@@ -57,11 +57,7 @@ final class LargeButtonView: UIView {
                 self.updateBackground()
             } completion: { [weak self] _ in
                 guard let self = self else { return }
-                if self.isActive {
-                    self.onPressed?()
-                    print("1")
-                }
-                print("2")
+                self.onPressed?(self.isActive)
                 self.isUserInteractionEnabled = true
             }
         }

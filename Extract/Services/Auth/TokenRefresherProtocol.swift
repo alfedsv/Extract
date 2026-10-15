@@ -7,7 +7,7 @@
 
 import Foundation
 
-protocol TokenRefresherProtocol: Sendable {
+nonisolated protocol TokenRefresherProtocol: Sendable {
     /// Обновляет access-токен, используя refresh-токен.
     /// Если refresh-токен отсутствует или истёк — бросает `APIError.unauthorized`.
     /// Безопасен при параллельных вызовах: если refresh уже идёт,

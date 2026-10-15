@@ -29,8 +29,9 @@ enum Layout {
         static let textViewHeight: CGFloat = 40
         static let textViewBorderWidth: CGFloat = 1
         static let textViewRadius: CGFloat = 10
-        static let textViewEyeSide: CGFloat = 25
+        static let textViewIconSide: CGFloat = 25
         static let textViewInsets: UIEdgeInsets = .init(top: 10, left: 15, bottom: 10, right: 15)
-        static let textViewPasswordInsets: UIEdgeInsets = .init(top: 10, left: 15, bottom: 10, right: 50)
+        static let textViewSpecialInsets: UIEdgeInsets = .init(top: 10, left: 15, bottom: 10, right: 50)
+        static let loginTextViewTopOutset: CGFloat = 150
     }
 }

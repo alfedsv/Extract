@@ -10,7 +10,7 @@ import Foundation
 
 /// Тип авторизации запроса.
 nonisolated enum AuthorizationType: Sendable  {
-    /// Запрос идёт без токена (логин, регистрация).
+    /// Запрос без токена (логин, регистрация).
     case none
     /// Запрос с access-токеном.
     case access

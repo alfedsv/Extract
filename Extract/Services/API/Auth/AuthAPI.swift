@@ -7,7 +7,7 @@
 
 import Foundation
 
-final class AuthAPI: AuthAPIProtocol {
+nonisolated final class AuthAPI: AuthAPIProtocol {
 
     private let client: APIClientProtocol
 

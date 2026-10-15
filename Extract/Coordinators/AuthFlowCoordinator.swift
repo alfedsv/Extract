@@ -48,21 +48,28 @@ final class AuthCoordinator: Coordinator {
     private func showWelcome() {
         let vm = viewModelFactory.makeWelcomeViewModel()
         let vc = WelcomeViewController(viewModel: vm)
-
-        vm.onLoginTap    = { [weak self] in self?.showLogin() }
+        vm.onLoginTap    = { [weak self] in self?.showUsername() }
         vm.onRegisterTap = { [weak self] in self?.showRegister() }
-
-        // Welcome — корень. Кладём его одним экраном в стек.
         navigationController.setViewControllers([vc], animated: true)
     }
 
-    // MARK: - Login
+    // MARK: - Username
 
-    private func showLogin() {
-        let vm = viewModelFactory.makeLoginViewModel()
-        let vc = LoginViewController(viewModel: vm)
-        vm.onLoginSuccess = { [weak self] in self?.onFinish?() }
-        // Кнопка «назад» на логине ведёт обратно на welcome.
+    private func showUsername() {
+        let vm = viewModelFactory.makeUsernameViewModel()
+        let vc = UsernameViewController(viewModel: vm)
+        vm.onBack = { [weak self] in self?.navigationController.popViewController(animated: true) }
+        vm.onNext = { [weak self] username in
+            self?.showPassword(username: username)
+        }
+        navigationController.pushViewController(vc, animated: true)
+    }
+    
+    // MARK: - Password
+
+    private func showPassword(username: String) {
+        let vm = viewModelFactory.makePasswordViewModel(username: username)
+        let vc = PasswordViewController(viewModel: vm)
         vm.onBack = { [weak self] in self?.navigationController.popViewController(animated: true) }
         navigationController.pushViewController(vc, animated: true)
     }

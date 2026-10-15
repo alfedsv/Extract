@@ -11,12 +11,11 @@ import Foundation
 nonisolated protocol Endpoint: Sendable {
     var path: String { get }
     var method: HTTPMethod { get }
-    var parameters: [String: Any]? { get }
+    var body: Data? { get }
     var authorization: AuthorizationType { get }
+    var treats401AsSuccess: Bool { get }
+}
+nonisolated extension Endpoint {
+    var treats401AsSuccess: Bool { false }   // по умолчанию 401 — ошибка
 }
 
-extension Endpoint {
-    var method: HTTPMethod { .post }
-    var parameters: [String: Any]? { nil }
-    var authorization: AuthorizationType { .access }
-}

@@ -7,6 +7,21 @@
 
 import Foundation
 
-nonisolated struct AuthRequest {
-    
+nonisolated enum AuthRequest {
+
+    struct RefreshToken: Encodable, Sendable {
+        let refreshToken: String
+
+        enum CodingKeys: String, CodingKey {
+            case refreshToken = "refresh_token"
+        }
+    }
+
+    struct Revoke: Encodable, Sendable {
+        let userId: Int
+
+        enum CodingKeys: String, CodingKey {
+            case userId = "user_id"
+        }
+    }
 }

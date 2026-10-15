@@ -7,15 +7,12 @@
 
 import UIKit
 
-final class AccessoryLabelView: UIView {
-
-    var onTap: (() -> Void)?
+final class AccessoryLabelView: TapView {
 
     private let label: UILabel = {
         let l = UILabel()
         l.font = .systemFont(ofSize: 17)
-        l.textColor = .systemBlue
-        l.translatesAutoresizingMaskIntoConstraints = false
+        l.textColor = Colors.Text.common.color
         return l
     }()
 
@@ -26,28 +23,31 @@ final class AccessoryLabelView: UIView {
 
     init(text: String?) {
         super.init(frame: .zero)
+        setContentHuggingPriority(.required, for: .horizontal)
+        setContentCompressionResistancePriority(.required, for: .horizontal)
         label.text = text
         addSubview(label)
-
-        NSLayoutConstraint.activate([
-            label.leadingAnchor.constraint(equalTo: leadingAnchor),
-            label.trailingAnchor.constraint(equalTo: trailingAnchor),
-            label.topAnchor.constraint(equalTo: topAnchor),
-            label.bottomAnchor.constraint(equalTo: bottomAnchor)
-        ])
-
-        let minH = heightAnchor.constraint(greaterThanOrEqualToConstant: 44)
-        minH.priority = .defaultHigh
-        minH.isActive = true
-
-        let tap = UITapGestureRecognizer(target: self, action: #selector(handleTap))
-        addGestureRecognizer(tap)
-        isUserInteractionEnabled = true
+        setupConstraints()
     }
 
     required init?(coder: NSCoder) { fatalError() }
 
-    @objc private func handleTap() {
-        onTap?()
+}
+private extension AccessoryLabelView {
+    func setupConstraints() {
+        label.translatesAutoresizingMaskIntoConstraints = false
+        
+        let minH = heightAnchor.constraint(greaterThanOrEqualToConstant: 44)
+        minH.priority = .defaultHigh
+        minH.isActive = true
+        
+        NSLayoutConstraint.activate([
+            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 15),
+            label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -10),
+            label.topAnchor.constraint(equalTo: topAnchor),
+            label.bottomAnchor.constraint(equalTo: bottomAnchor)
+        ])
+        
+        
     }
 }

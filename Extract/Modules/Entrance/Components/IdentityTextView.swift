@@ -7,56 +7,15 @@
 
 import UIKit
 
-
 final class IdentityTextView: UITextView {
 
-    enum TextViewType {
-        case username
-        case password
-        case confirm
-        case firstName
-        case lastName
-        
-        func placeholder() -> String {
-            switch self {
-            case .username:
-                L10n.Entrance.Identity.Placeholder.username.localized
-            case .password:
-                L10n.Entrance.Identity.Placeholder.password.localized
-            case .confirm:
-                L10n.Entrance.Identity.Placeholder.confirm.localized
-            case .firstName:
-                L10n.Entrance.Identity.Placeholder.firstName.localized
-            case .lastName:
-                L10n.Entrance.Identity.Placeholder.lastName.localized
-            }
-        }
-        
-        func maxChars() -> Int {
-            switch self {
-            case .username:
-                Settings.IdentityTextView.usernameClosedRange.upperBound
-            case .password, .confirm:
-                Settings.IdentityTextView.passwordClosedRange.upperBound
-            case .firstName, .lastName:
-                Settings.IdentityTextView.nameClosedRange.upperBound
-            }
-        }
-    }
+    let textViewType: IdentityTextViewType
 
-    private let placeholderLabel: UILabel = {
-        let label = UILabel()
-        label.textColor = Colors.TextView.placeholder.color
-        label.font = .systemFont(ofSize: 14)
-        return label
-    }()
-    
-    private let textViewType: TextViewType
+    private let placeholderLabel = PlaceholderLabel()
     private let maxChars: Int
-    
     private var realText: String = ""
     private var isPasswordSecure: Bool = true
-    
+
     override var text: String! {
         get {
             // наружу отдаём реальный текст
@@ -68,6 +27,7 @@ final class IdentityTextView: UITextView {
                 realText = newValue ?? ""
                 super.text = String(repeating: "•", count: realText.count)
             } else {
+                realText = newValue ?? ""
                 super.text = newValue
             }
         }
@@ -88,27 +48,29 @@ final class IdentityTextView: UITextView {
         }
     }
 
-    init(textViewType: TextViewType) {
+    init(textViewType: IdentityTextViewType) {
         self.textViewType = textViewType
         self.maxChars = textViewType.maxChars()
         super.init(frame: .zero, textContainer: .none)
         setupUI()
         setupAppearance()
         setupConstraints()
+        if #available(iOS 17.0, *) {
+            registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: Self, _) in
+                self.setupAppearance()
+            }
+        }
     }
-    
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-    
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
     private func setupUI() {
         addSubview(placeholderLabel)
         placeholderLabel.text = textViewType.placeholder()
         backgroundColor = Colors.TextView.background.color
-        font = UIFont(name: "Menlo-Regular", size: 16)
+        font = Fonts.identityTextView.value
         autocorrectionType = .no
         spellCheckingType = .no
-        returnKeyType = .done
         layer.borderWidth = Layout.Identity.textViewBorderWidth
         layer.cornerRadius = Layout.Identity.textViewRadius
         layer.masksToBounds = true
@@ -116,60 +78,65 @@ final class IdentityTextView: UITextView {
         isScrollEnabled = false
         keyboardType = UIKeyboardType.default
         returnKeyType = .done
+        tintColor = Colors.Text.common.color
+        isSecureTextEntry = false
         switch textViewType {
         case .username:
-            textContainerInset = Layout.Identity.textViewInsets
+            textContainerInset = Layout.Identity.textViewSpecialInsets
             autocapitalizationType = .none
-            isSecureTextEntry = false
         case .password:
-            textContainerInset = Layout.Identity.textViewPasswordInsets
+            textContainerInset = Layout.Identity.textViewSpecialInsets
             autocapitalizationType = .none
-            isSecureTextEntry = true
+            textContentType = .password
         case .confirm:
-            textContainerInset = Layout.Identity.textViewInsets
+            textContainerInset = Layout.Identity.textViewSpecialInsets
             autocapitalizationType = .none
-            isSecureTextEntry = true
+            textContentType = .newPassword
         case .firstName, .lastName:
             textContainerInset = Layout.Identity.textViewInsets
             autocapitalizationType = .allCharacters
-            isSecureTextEntry = false
         }
     }
-    
+
     func toggleSecureTextEntry() -> Bool {
         isPasswordSecure.toggle()
-        super.text = isPasswordSecure ? String(repeating: "•", count: realText.count) : realText
+        super.text = isPasswordSecure
+            ? String(repeating: "•", count: realText.count)
+            : realText
         selectedRange = NSRange(location: (super.text as NSString).length, length: 0)
+        setupAppearance()
+        delegate?.textViewDidChange?(self)
         return isPasswordSecure
     }
 
-    
     func setupAppearance() {
+        let trait = traitCollection
+
         if isError {
-            self.layer.borderColor = Colors.TextView.Border.error.cgColor
-            self.textColor = Colors.TextView.Text.active.color
+            layer.borderColor = Colors.TextView.Border.error.cgColor(with: trait)
+            textColor = Colors.TextView.Text.active.color
         } else {
             if isFirstResponder {
                 if isCharsAtMax() {
-                    self.layer.borderColor = Colors.TextView.Border.inactive.cgColor
-                    self.textColor = Colors.TextView.Text.inactive.color
+                    layer.borderColor = Colors.TextView.Border.inactive.cgColor(with: trait)
+                    textColor = Colors.TextView.Text.inactive.color
                 } else {
-                    self.layer.borderColor = Colors.TextView.Border.active.cgColor
-                    self.textColor = Colors.TextView.Text.active.color
+                    layer.borderColor = Colors.TextView.Border.active.cgColor(with: trait)
+                    textColor = Colors.TextView.Text.active.color
                 }
             } else {
                 if self.text.isEmpty {
-                    self.layer.borderColor = Colors.TextView.Border.inactive.cgColor
-                    self.textColor = Colors.TextView.Text.inactive.color
+                    layer.borderColor = Colors.TextView.Border.inactive.cgColor(with: trait)
+                    textColor = Colors.TextView.Text.inactive.color
                 } else {
-                    self.layer.borderColor = Colors.TextView.Border.active.cgColor
-                    self.textColor = Colors.TextView.Text.active.color
+                    layer.borderColor = Colors.TextView.Border.active.cgColor(with: trait)
+                    textColor = Colors.TextView.Text.active.color
                 }
             }
         }
         placeholderHandler()
     }
-    
+
     private func placeholderHandler() {
         if isFirstResponder {
             placeholderLabel.isHidden = true
@@ -177,11 +144,11 @@ final class IdentityTextView: UITextView {
             placeholderLabel.isHidden = !text.isEmpty
         }
     }
-    
+
     private func isCharsAtMax() -> Bool {
         text.count >= maxChars
     }
-    
+
     func shouldChange(in range: NSRange, replacementText text: String) -> Bool {
         if text.rangeOfCharacter(from: .newlines) != nil { return false }
         if textViewType == .username {
@@ -199,26 +166,35 @@ final class IdentityTextView: UITextView {
         }
 
         let current = super.text as NSString
-        let newLength = current.replacingCharacters(in: range, with: text).count
-        if newLength > maxChars { return false }
-
+        let newText = current.replacingCharacters(in: range, with: text)
+        if newText.count > maxChars { return false }
+        realText = newText
         return true
     }
-    
+
     private func applySecureReplacement(range: NSRange, replacement: String) {
-        if replacement.isEmpty {
-            if !realText.isEmpty { realText.removeLast() }
-        } else {
-            for ch in replacement {
-                if realText.count >= maxChars { break }
-                realText.append(ch)
-            }
-        }
+        let nsReal = realText as NSString
+        let realRange = NSRange(location: range.location, length: range.length)
+
+        // Защита от выхода за границы realText (бывает при быстрой вставке/удалении).
+        let safeLocation = min(max(0, realRange.location), nsReal.length)
+        let safeLength = min(realRange.length, nsReal.length - safeLocation)
+        let safeRange = NSRange(location: safeLocation, length: safeLength)
+
+        let newReal = nsReal.replacingCharacters(in: safeRange, with: replacement)
+        guard newReal.count <= maxChars else { return }
+
+        realText = newReal
         super.text = String(repeating: "•", count: realText.count)
-        selectedRange = NSRange(location: (super.text as NSString).length, length: 0)
+
+        let caret = safeLocation + (replacement as NSString).length
+        selectedRange = NSRange(location: caret, length: 0)
+
         setupAppearance()
+
+        delegate?.textViewDidChange?(self)
     }
-    
+
     override func becomeFirstResponder() -> Bool {
         let result = super.becomeFirstResponder()
         guard result else { return result }
@@ -241,13 +217,15 @@ final class IdentityTextView: UITextView {
         }
         return result
     }
-
 }
+
 private extension IdentityTextView {
     func setupConstraints() {
         placeholderLabel.translatesAutoresizingMaskIntoConstraints = false
 
-        let trailingInset = textViewType == .password ? Layout.Identity.textViewPasswordInsets.right : Layout.Identity.textViewInsets.right
+        let trailingInset = (textViewType == .password || textViewType == .confirm || textViewType == .username)
+            ? Layout.Identity.textViewSpecialInsets.right
+            : Layout.Identity.textViewInsets.right
 
         NSLayoutConstraint.activate([
             placeholderLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
@@ -256,6 +234,7 @@ private extension IdentityTextView {
         ])
     }
 }
+
 extension IdentityTextView {
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
         super.traitCollectionDidChange(previousTraitCollection)

@@ -14,7 +14,8 @@ protocol ViewModelFactory {
 
     // Entrance
     func makeWelcomeViewModel() -> WelcomeViewModel
-    func makeLoginViewModel() -> AuthViewModel
+    func makeUsernameViewModel() -> UsernameViewModel
+    func makePasswordViewModel(username: String) -> PasswordViewModel
     func makeRegistrationViewModel() -> RegistrationViewModel
 
     // Main
@@ -23,10 +24,18 @@ protocol ViewModelFactory {
 
 final class AppViewModelFactory: ViewModelFactory {
 
-    private let authService: AuthServiceProtocol
+    private nonisolated let authService: AuthServiceProtocol
+    private nonisolated let entranceRepository: EntranceRepositoryProtocol
+    private nonisolated let logger: LoggerProtocol
 
-    init(authService: AuthServiceProtocol) {
+    nonisolated init(
+        authService: AuthServiceProtocol,
+        entranceRepository: EntranceRepositoryProtocol,
+        logger: LoggerProtocol
+    ) {
         self.authService = authService
+        self.entranceRepository = entranceRepository
+        self.logger = logger
     }
 
     // MARK: - Splash
@@ -41,12 +50,25 @@ final class AppViewModelFactory: ViewModelFactory {
         WelcomeViewModel()   // без зависимостей — просто пробрасывает события
     }
 
-    func makeLoginViewModel() -> AuthViewModel {
-        AuthViewModel(authService: authService)
+    func makeUsernameViewModel() -> UsernameViewModel {
+        UsernameViewModel(
+            entranceRepository: entranceRepository,
+            logger: logger
+        )
+    }
+    
+    func makePasswordViewModel(username: String) -> PasswordViewModel {
+        PasswordViewModel(
+            authService: authService,
+            logger: logger,
+            username: username)
     }
 
     func makeRegistrationViewModel() -> RegistrationViewModel {
-        RegistrationViewModel(authService: authService)
+        RegistrationViewModel(
+            authService: authService,
+            entranceRepository: entranceRepository,
+            logger: logger)
     }
 
     // MARK: - Home

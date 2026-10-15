@@ -14,8 +14,6 @@ nonisolated protocol KeychainStorageProtocol: AnyObject, Sendable {
     func clear()
 }
 
-nonisolated enum KeychainKey: String, CaseIterable {
-    case accessToken
-    case refreshToken
-    case wsToken
+nonisolated enum KeychainKey: String, CaseIterable, Sendable {
+    case session
 }

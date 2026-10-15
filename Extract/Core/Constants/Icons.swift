@@ -14,6 +14,10 @@ protocol ImagePath: RawRepresentable where RawValue == String {
 
 enum Icons {
 
+    enum Mark: String, ImagePath {
+        case checkmark = "Marks/checkmark"
+    }
+    
     enum Eye: String, ImagePath {
         case opened = "Eye/opened"
         case closed = "Eye/closed"

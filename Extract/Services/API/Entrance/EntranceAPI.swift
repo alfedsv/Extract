@@ -7,7 +7,7 @@
 
 import Foundation
 
-final class EntranceAPI: EntranceAPIProtocol {
+nonisolated final class EntranceAPI: EntranceAPIProtocol {
 
     private let client: APIClientProtocol
 
@@ -15,18 +15,15 @@ final class EntranceAPI: EntranceAPIProtocol {
         self.client = client
     }
 
-    func loginByName(username: String, password: String) async throws -> EntranceDTO.LoginAuth {
+    func login(username: String, password: String) async throws -> EntranceDTO.LoginResult {
         try await client.request(
             EntranceEndpoint.login(username: username, password: password),
-            as: EntranceDTO.LoginAuth.self
+            as: EntranceDTO.LoginResult.self
         )
     }
 
-    func isUserInDB(username: String) async throws -> EntranceDTO.IsUserExistingInDB {
-        try await client.request(
-            EntranceEndpoint.isLoginInDB(username: username),
-            as: EntranceDTO.IsUserExistingInDB.self
-        )
+    func isUserExists(username: String) async throws -> EntranceDTO.UserExistance {
+        return try await client.request(EntranceEndpoint.isUserExists(username: username), as: EntranceDTO.UserExistance.self)
     }
 
     /*func register(parameters: [String: Any]) async throws -> EntranceDTO.UserRegistrate {

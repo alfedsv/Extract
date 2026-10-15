@@ -12,15 +12,16 @@ extension String {
 
     /// Локализует строку, используя текущий язык приложения.
     func localized(comment: StaticString? = nil) -> String {
-        String(
-            localized: String.LocalizationValue(self),
-            bundle: .localizedBundle(),
-            comment: comment
-        )
+        String(localized: String.LocalizationValue(self), bundle: .localizedBundle(), comment: comment)
     }
     
     /// Локализует строку с форматированием.
     func localized(with arguments: CVarArg...) -> String {
+        String(format: localized(), arguments: arguments)
+    }
+    
+    /// Форматирует уже локализованную строку с аргументами.
+    func format(_ arguments: CVarArg...) -> String {
         String(format: localized(), arguments: arguments)
     }
 }

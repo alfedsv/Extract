@@ -7,41 +7,31 @@
 
 import Foundation
 
-enum EntranceEndpoint: Endpoint {
 
-    
-    var method: HTTPMethod { return .post }
-    
+nonisolated enum EntranceEndpoint: Endpoint {
+
     case login(username: String, password: String)
-    case isLoginInDB(username: String)
-    //case registration(parameters: [String: Any])
+    case isUserExists(username: String)
     case getUserId
     case getWS
-    
+
+    var method: HTTPMethod { .post }
+
     var path: String {
         switch self {
-        case .login:                     return "login"
-        case .isLoginInDB:               return "is_login_in_db"
-        //case .registration:              return "registration"
-        case .getUserId:                 return "user_own_id_get"
-        case .getWS:                     return "user_ws_id_get"
+        case .login:        return "login"
+        case .isUserExists:  return "is_login_in_db"
+        case .getUserId:    return "user_own_id_get"
+        case .getWS:        return "user_ws_id_get"
         }
     }
 
-    var parameters: [String: EndpointParameter]? {
+    var body: Data? {
         switch self {
         case .login(let username, let password):
-            return [
-                "login": .string(username),
-                "password": .string(password)
-            ]
-        
-        case .isLoginInDB(let username):
-            return [
-                "login": .string(username)
-            ]
-        /*case .registration(let params):
-            return params*/
+            return encode(EntranceRequest.Login(username: username, password: password))
+        case .isUserExists(let username):
+            return encode(EntranceRequest.UserExistance(username: username))
         case .getUserId, .getWS:
             return nil
         }
@@ -49,11 +39,26 @@ enum EntranceEndpoint: Endpoint {
 
     var authorization: AuthorizationType {
         switch self {
-        case .login, .isLoginInDB/*,
-             .registration*/:
-            return .none
-        case .getUserId, .getWS:
-            return .access
+        case .login, .isUserExists: return .none
+        case .getUserId, .getWS:   return .access
+        }
+    }
+    
+    var treats401AsSuccess: Bool {
+        switch self {
+        case .login: return true       // 401 на логине = «неверный пароль, N попыток»
+        default:     return false
+        }
+    }
+
+    // MARK: - Private
+
+    private func encode<T: Encodable>(_ value: T) -> Data? {
+        do {
+            return try JSONEncoder().encode(value)
+        } catch {
+            assertionFailure("Encode failed for \(self): \(error)")
+            return nil
         }
     }
 }

@@ -11,7 +11,7 @@ import Foundation
 ///
 /// Показывается первым.
 /// Наружу отдаёт один результат: авторизован или нет.
-final class SplashViewModel {
+final class SplashViewModel: BaseViewModel {
 
     // MARK: - Output
 

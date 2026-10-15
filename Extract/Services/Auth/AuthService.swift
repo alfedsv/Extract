@@ -7,66 +7,63 @@
 
 import Foundation
 
-import Foundation
-
-final class AuthService: AuthServiceProtocol {
+nonisolated final class AuthService: AuthServiceProtocol {
 
     private let entranceAPI: EntranceAPIProtocol
     private let authAPI: AuthAPIProtocol
-    private let tokenStorage: TokenStorageProtocol
+    private let sessionStore: SessionStoreProtocol
+    private let userRepository: UserRepositoryProtocol
     private let logger: LoggerProtocol
 
     init(
         entranceAPI: EntranceAPIProtocol,
         authAPI: AuthAPIProtocol,
-        tokenStorage: TokenStorageProtocol,
+        sessionStore: SessionStoreProtocol,
+        userRepository: UserRepositoryProtocol,
         logger: LoggerProtocol
     ) {
         self.entranceAPI = entranceAPI
         self.authAPI = authAPI
-        self.tokenStorage = tokenStorage
+        self.sessionStore = sessionStore
+        self.userRepository = userRepository
         self.logger = logger
     }
 
-    // MARK: - AuthServiceProtocol
-
     var isAuthorized: Bool {
-        guard let refresh = tokenStorage.refreshToken, !refresh.isEmpty else {
-            return false
-        }
-        return !tokenStorage.isRefreshTokenExpired()
+        sessionStore.isAuthorized
     }
 
-    func login(username: String, password: String) async throws {
+    func login(username: String, password: String) async throws -> User {
         do {
-            let response = try await entranceAPI.loginByName(
+            let result = try await entranceAPI.login(
                 username: username,
                 password: password
             )
-            applyLogin(response)
+
+            switch result {
+            case .authorized(let auth):
+                // Сохраняем сессию
+                try await saveSession(from: auth)
+
+                // Мапим DTO → Domain
+                let user = UserMapper.toDomain(auth)
+
+                // Кэшируем профиль
+                userRepository.cacheCurrentUser(user)
+
+                // 4. Возвращаем VM
+                return user
+
+            case .unauthorized(let unauth):
+                throw AuthError.wrongPassword(attemptsLeft: unauth.attempts)
+            }
         } catch let error as APIError {
             throw mapToAuthError(error)
         }
     }
 
-    
-
-    /*func register(_ model: [String: Any]) async throws { // TODO: - [String: Any] вместо RegistratonModel пока для сборки
-        do {
-            let response: EntranceDTO.UserRegistrate
-            response = try await entranceAPI.register(
-                parameters: model
-            )
-            //tokenStorage.accessToken = response.accessToken
-            //tokenStorage.refreshToken = response.refreshToken
-            //saveCurrentUserId(response.userId)
-        } catch let error as APIError {
-            throw mapToAuthError(error)
-        }
-    }*/
-
     func logout() async {
-        let userId = currentUserId()
+        let userId = sessionStore.current?.userId ?? 0
         if userId > 0 {
             do {
                 try await authAPI.revokeTokens(userId: userId)
@@ -74,16 +71,42 @@ final class AuthService: AuthServiceProtocol {
                 logger.warning("Revoke failed on logout: \(error.localizedDescription)")
             }
         }
-        tokenStorage.clear()
-        clearCurrentUserId()
+        sessionStore.clear()
+        userRepository.clearCache()
     }
 
     // MARK: - Private
 
-    private func applyLogin(_ response: EntranceDTO.LoginAuth) {
-        tokenStorage.accessToken = response.accessToken
-        tokenStorage.refreshToken = response.refreshToken
-        //saveCurrentUserId(response.userId)
+    private func saveSession(from auth: EntranceDTO.LoginAuth) async throws {
+        let now = Date()
+
+        let temporarySession = Session(
+            userId: 0,
+            accessToken: auth.accessToken,
+            refreshToken: auth.refreshToken,
+            accessTokenBornAt: now,
+            refreshTokenBornAt: now
+        )
+        try sessionStore.save(temporarySession)
+
+        let userId: Int
+        do {
+            let response = try await entranceAPI.getUserId()
+            userId = response.userId
+        } catch {
+            sessionStore.clear()
+            logger.error(error, context: "getUserId after login")
+            throw AuthError.server(message: "Не удалось завершить вход")
+        }
+
+        let finalSession = Session(
+            userId: userId,
+            accessToken: auth.accessToken,
+            refreshToken: auth.refreshToken,
+            accessTokenBornAt: now,
+            refreshTokenBornAt: now
+        )
+        try sessionStore.save(finalSession)
     }
 
     private func mapToAuthError(_ error: APIError) -> Error {
@@ -95,24 +118,5 @@ final class AuthService: AuthServiceProtocol {
         default:
             return error
         }
-    }
-
-    // MARK: - Current user id
-
-    // TODO: вынести в SessionStore, когда появится.
-    // Сейчас — минимальный вариант, чтобы работал revoke.
-
-    private static let userIdKey = "CurrentUserId"
-
-    private func currentUserId() -> Int {
-        UserDefaults.standard.integer(forKey: Self.userIdKey)
-    }
-
-    private func saveCurrentUserId(_ id: Int) {
-        UserDefaults.standard.set(id, forKey: Self.userIdKey)
-    }
-
-    private func clearCurrentUserId() {
-        UserDefaults.standard.removeObject(forKey: Self.userIdKey)
     }
 }

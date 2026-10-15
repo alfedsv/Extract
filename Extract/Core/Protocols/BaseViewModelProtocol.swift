@@ -8,6 +8,7 @@
 import Foundation
 
 
-protocol BaseViewModelProtocol {
-    var onError: ()->Void { get set }
+protocol BaseViewModelProtocol: AnyObject {
+    var onError: ((String) -> Void)? { get set }
+    var onSetLoading: ((Bool) -> Void)? { get set }
 }

@@ -8,7 +8,8 @@
 import Foundation
 
 
-final class WelcomeViewModel {
+final class WelcomeViewModel: BaseViewModel {
+
 
     // MARK: - Output
 

@@ -13,7 +13,7 @@ final class SplashViewController: BaseViewController {
     
     init(viewModel: SplashViewModel) {
         self.viewModel = viewModel
-        super.init(nibName: nil, bundle: nil)
+        super.init(viewModel: viewModel)
     }
     
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
