@@ -62,7 +62,7 @@ final class UsernameViewController: BaseIdentityViewController {
         nextButton.onPressed = { [weak self] isActive in
             if isActive {
                 guard let self = self else { return }
-                self.viewModel.nextTapped(username: self.usernameTextView.text)
+                self.viewModel.nextTapped(usernameAt: self.usernameTextView.text)
             }
         }
     }
@@ -117,7 +117,7 @@ extension UsernameViewController: UITextViewDelegate {
     
     func textViewDidChange(_ textView: UITextView) {
         if let textView = textView as? IdentityTextView {
-            nextButton.isActive = viewModel.isValidLength(text: textView.text)
+            nextButton.isActive = viewModel.isValidLength(usernameAt: textView.text)
             textView.setupAppearance()
         }
     }

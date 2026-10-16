@@ -133,17 +133,9 @@ final class RegistrationViewController: BaseIdentityViewController {
             ThemeManager.shared.switchTheme()
         }
         
-        signupButton.onPressed = { [weak self] isActive in
+        signupButton.onPressed = { [weak self] _ in
             guard let self = self else { return }
-            viewModel.signupTapped(
-                isActive: isActive,
-                firstName: self.firstNameTextView.text,
-                lastName: self.lastNameTextView.text,
-                username: self.usernameTextView.text,
-                password: self.passwordTextView.text,
-                confirm: self.confirmTextView.text,
-                isAgreementAccepted: agreementSwitch.isOn
-            )
+            self.viewModel.signupTapped()
         }
     }
 
@@ -153,18 +145,22 @@ final class RegistrationViewController: BaseIdentityViewController {
             self.showWarnings(warnings: warnings)
         }
         
-        viewModel.onUsernameChecking = { [weak self] isActive in
+        viewModel.onUsernameCheckingOn = { [weak self] in
             guard let self = self else { return }
-            if isActive {
-                self.usernameIndicator.startAnimating()
-            } else {
-                self.usernameIndicator.stopAnimating()
-            }
+            self.checkmarkImageView.isHidden = true
+            self.usernameIndicator.startAnimating()
+            
         }
         
-        viewModel.onUsernameChecked = { [weak self] isValid in
+        viewModel.onUsernameCheckingOff = { [weak self] isAvailable in
             guard let self = self else { return }
-            self.checkmarkImageView.isHidden = !isValid
+            self.usernameIndicator.stopAnimating()
+            self.checkmarkImageView.isHidden = !isAvailable
+        }
+        
+        viewModel.onDataChanged = { [weak self] isSingupAvailable in
+            guard let self = self else { return }
+            self.signupButton.isActive = isSingupAvailable
         }
     }
     
@@ -185,6 +181,7 @@ final class RegistrationViewController: BaseIdentityViewController {
     @objc
     func agreementValueDidChange(sender: UISwitch) {
         agreementWarningLabel.text = ""
+        viewModel.dataChanged(firstName: firstNameTextView.text, lastName: lastNameTextView.text, usernameAt: usernameTextView.text, password: passwordTextView.text, confirm: confirmTextView.text, isAgreementAccepted: agreementSwitch.isOn)
     }
     
     private func showWarnings(warnings: [IdentityWarning]) {
@@ -365,10 +362,7 @@ extension RegistrationViewController: UITextViewDelegate {
             textView.setupAppearance()
             clearWarning(type: textView.textViewType)
             eyeHandler(textView: textView)
-            if textView.textViewType == .username {
-                checkmarkImageView.isHidden = true
-                viewModel.usernameChanged(username: textView.text)
-            }
+            viewModel.dataChanged(firstName: firstNameTextView.text, lastName: lastNameTextView.text, usernameAt: usernameTextView.text, password: passwordTextView.text, confirm: confirmTextView.text, isAgreementAccepted: agreementSwitch.isOn)
         }
     }
     

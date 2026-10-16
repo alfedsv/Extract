@@ -8,7 +8,7 @@
 import Foundation
 
 
-struct LoginModel {
+/*struct LoginModel {
     let username: String
     let password: String
-}
+}*/

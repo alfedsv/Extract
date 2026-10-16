@@ -8,5 +8,10 @@
 import Foundation
 
 struct RegistrationModel {
-    
+    var firstName: String = ""
+    var lastName: String = ""
+    var username: String = ""
+    var password: String = ""
+    var confirm: String = ""
+    var isAgreementAccepted: Bool = false
 }

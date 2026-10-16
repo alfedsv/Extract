@@ -32,7 +32,7 @@ nonisolated final class AppDependencies {
     let viewModelFactory: AppViewModelFactory
 
     init() {
-        // 1. Инфраструктура
+        // Инфраструктура
         let logger: LoggerProtocol = {
             #if DEBUG
             return PrintLogger()
@@ -44,7 +44,7 @@ nonisolated final class AppDependencies {
         let keychainStorage = KeychainStorage()
         let sessionStore = SessionStore(keychain: keychainStorage)
 
-        // 2. Клиенты
+        // Клиенты
         let baseClient = APIClient(
             //baseURL: URL(string: "https://extract.moscow:8080/")!, // на время отключеного сервера
             baseURL: URL(string: "https://alfedsv.lightboxapi.ru/")!,

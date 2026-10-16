@@ -53,7 +53,7 @@ final class PasswordViewModel: BaseViewModel, PasswordViewModelProtocol {
     
     func loginTapped(password: String) {
         if let validationError = validate(password) {
-            logger.crashOnValidation(validationError, in: "PasswordViewModel.loginTapped")
+            logger.crashOnValidation(validationError, in: "\(type(of: self)).\(#function)")
             onError?(validationError.userFacingMessage)
             return
         }

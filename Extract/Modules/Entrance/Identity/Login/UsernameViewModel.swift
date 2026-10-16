@@ -15,9 +15,9 @@ protocol UsernameViewModelProtocol: BaseViewModelProtocol {
     // MARK: - Input
     func backTapped()
     func setupWarning(warning: IdentityWarning?)
-    func nextTapped(username: String)
+    func nextTapped(usernameAt: String)
     
-    func isValidLength(text: String) -> Bool
+    func isValidLength(usernameAt: String) -> Bool
 }
 
 final class UsernameViewModel: BaseViewModel, UsernameViewModelProtocol {
@@ -48,9 +48,10 @@ final class UsernameViewModel: BaseViewModel, UsernameViewModelProtocol {
         onWarning?(warning)
     }
 
-    func nextTapped(username: String) {
+    func nextTapped(usernameAt: String) {
+        let username = String(usernameAt.dropFirst())
         if let validationError = validate(username) {
-            logger.crashOnValidation(validationError, in: "UsernameViewModel.nextTapped")
+            logger.crashOnValidation(validationError, in: "\(type(of: self)).\(#function)")
             onError?(validationError.userFacingMessage)
             return
         }
@@ -58,13 +59,12 @@ final class UsernameViewModel: BaseViewModel, UsernameViewModelProtocol {
         Task { [weak self] in
             guard let self else { return }
             do {
-                // на вермя отключеного сервера
-                /*let exists = try await entranceRepository.isUserExists(username: String(username.dropFirst()))
+                let exists = try await entranceRepository.isUserExists(username: String(username.dropFirst()))
                 guard exists else {
-                    onWarning?(.notUserExists)
+                    onWarning?(IdentityWarning(warning: .notUserExists, textViewType: .username))
                     self.onSetLoading?(false)
                     return
-                }*/
+                }
                 self.onSetLoading?(false)
                 self.onNext?(String(username.dropFirst()))
             } catch let error as APIError {
@@ -80,12 +80,11 @@ final class UsernameViewModel: BaseViewModel, UsernameViewModelProtocol {
             
     }
     
-    func isValidLength(text: String) -> Bool {
-        Settings.IdentityTextView.usernameClosedRange.contains(text.count)
+    func isValidLength(usernameAt: String) -> Bool {
+        let username = String(usernameAt.dropFirst())
+        return Settings.IdentityTextView.usernameClosedRange.contains(username.count)
     }
 
-
-    
 }
 private extension UsernameViewModel {
     func validate(_ username: String) -> ValidationError? {

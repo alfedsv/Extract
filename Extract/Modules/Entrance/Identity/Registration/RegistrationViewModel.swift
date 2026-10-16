@@ -11,37 +11,65 @@ import Foundation
 protocol RegistrationViewModelProtocol: BaseViewModelProtocol {
     
     // MARK: - Output
+
     var onBack: (() -> Void)? { get set }
+    var onDataChanged: ((Bool) -> Void)? { get set }
     var onWarning: (([IdentityWarning]) -> Void)? { get set }
     var onRegisterSuccess: (() -> Void)? { get set }
-    var onUsernameChecking: ((Bool) -> Void)? { get set }
-    var onUsernameChecked: ((Bool) -> Void)? { get set }
+    var onUsernameCheckingOn: (() -> Void)? { get set }
+    var onUsernameCheckingOff: ((Bool) -> Void)? { get set }
 
     // MARK: - Input
 
     func backTapped()
-    func usernameChanged(username: String)
-    func signupTapped(isActive: Bool, firstName: String, lastName: String, username: String, password: String, confirm: String, isAgreementAccepted: Bool)
+    func dataChanged(firstName: String, lastName: String, usernameAt: String, password: String, confirm: String, isAgreementAccepted: Bool)
+    func signupTapped()
 }
 
 final class RegistrationViewModel: BaseViewModel, RegistrationViewModelProtocol {
     
     // MARK: - Output
+
     var onBack: (() -> Void)?
+    var onDataChanged: ((Bool) -> Void)?
     var onWarning: (([IdentityWarning]) -> Void)?
     var onRegisterSuccess: (() -> Void)?
-    var onUsernameChecking: ((Bool) -> Void)?
-    var onUsernameChecked: ((Bool) -> Void)?
+    var onUsernameCheckingOn: (() -> Void)?
+    var onUsernameCheckingOff: ((Bool) -> Void)?
 
     // MARK: - Dependencies
 
     private let authService: AuthServiceProtocol
     private let entranceRepository: EntranceRepositoryProtocol
     private let logger: LoggerProtocol
+
+    // MARK: - State
+
+    /// Источник истины по данным формы. Ник хранится без префикса `@`.
+    private var model = RegistrationModel()
+
+    /// Подтверждён ли текущий ник бэкендом как свободный.
+    private var isUsernameAvailable = false
+
+    /// Кэш последнего результата `isSignupAvailable()`.
+    private var signupAvailable = false
     
-    private var isUsernameCheckInProgress = false
-    private var pendingUsername: String?
+    // MARK: - Username availability check
+
+    /// Идентификатор последней запрошенной проверки ника.
+    /// Растёт при каждом изменении ника; асинхронный ответ применяется,
+    /// только если его `id` совпадает с текущим — защита от устаревших ответов
+    /// при быстром вводе (race condition).
     private var usernameCheckId = 0
+
+    /// Ник, который надо проверить следующим. Храним только последний:
+    /// если пользователь печатает быстро, промежуточные проверки не нужны.
+    private var pendingUsername: String?
+
+    /// Идёт ли сейчас сетевой запрос. Пока `true`, новый стартовать нельзя,
+    /// но `pendingUsername` уже может быть заполнен — он подхватится в
+    /// `startNextUsernameCheckIfNeeded` после завершения текущего.
+    private var isUsernameCheckInProgress = false
 
     init(authService: AuthServiceProtocol, entranceRepository: EntranceRepositoryProtocol, logger: LoggerProtocol) {
         self.authService = authService
@@ -50,22 +78,49 @@ final class RegistrationViewModel: BaseViewModel, RegistrationViewModelProtocol 
     }
 
     // MARK: - Input
+    
+    func dataChanged(firstName: String, lastName: String, usernameAt: String, password: String, confirm: String, isAgreementAccepted: Bool) {
+        // `usernameAt` приходит с префиксом `@`, который рисует IdentityTextView.
+        // В модель и на бэкенд уходит ник без `@`.
+        let username = String(usernameAt.dropFirst())
+        if model.username != username {
+            isUsernameAvailable = false
+            usernameChanged(username: username)
+        }
+        model.firstName = firstName
+        model.lastName = lastName
+        model.username = username
+        model.password = password
+        model.confirm = confirm
+        model.isAgreementAccepted = isAgreementAccepted
 
-    func usernameChanged(username: String) {
+        signupAvailable = isSignupAvailable()
+        onDataChanged?(signupAvailable)
+    }
+
+    /// Вызывается при изменении ника. Если новый ник короче минимума —
+    /// сбрасываем флаг доступности и уведомляем UI без сетевого запроса.
+    /// Иначе ставим ник в очередь на проверку.
+    private func usernameChanged(username: String) {
         usernameCheckId += 1
 
-        guard username.count > Settings.IdentityTextView.usernameClosedRange.lowerBound else {
+        guard username.count >= Settings.IdentityTextView.usernameClosedRange.lowerBound else {
             pendingUsername = nil
-            resetUsernameCheckUI()
+            isUsernameAvailable = false
+            onUsernameCheckingOff?(false)
+            onDataChanged?(isSignupAvailable())
             return
         }
 
         pendingUsername = username
-        onUsernameChecking?(true)
+        onUsernameCheckingOn?()
 
         startNextUsernameCheckIfNeeded()
     }
 
+    /// Запускает проверку `pendingUsername`, если она ещё не идёт.
+    /// Вызывается и после `usernameChanged`, и по завершении предыдущего
+    /// запроса — так выстраивается цепочка «одна проверка за раз».
     private func startNextUsernameCheckIfNeeded() {
         guard !isUsernameCheckInProgress, let username = pendingUsername else {
             return
@@ -75,30 +130,36 @@ final class RegistrationViewModel: BaseViewModel, RegistrationViewModelProtocol 
         isUsernameCheckInProgress = true
         let id = usernameCheckId
 
-        Task { [weak self] in
+        Task { @MainActor [weak self] in
             guard let self else { return }
 
             do {
-                let exists = try await self.entranceRepository.isUserExists(username: String(username.dropFirst()))
+                // true  — пользователь с таким ником уже зарегистрирован (занят)
+                // false — ник свободен
+                let exists = try await self.entranceRepository.isUserExists(username: username)
 
                 self.isUsernameCheckInProgress = false
 
                 if id == self.usernameCheckId {
                     if exists {
-                        self.onUsernameChecking?(false)
-                        self.onUsernameChecked?(true)
-                    } else {
                         self.onWarning?([IdentityWarning(warning: .usernameTaken, textViewType: .username)])
-                        self.resetUsernameCheckUI()
+                        self.onUsernameCheckingOff?(false)
+                        self.isUsernameAvailable = false
+                    } else {
+                        self.onUsernameCheckingOff?(true)
+                        self.isUsernameAvailable = true
                     }
+                    self.onDataChanged?(isSignupAvailable())
                 }
 
                 self.startNextUsernameCheckIfNeeded()
             } catch let error as APIError {
                 self.isUsernameCheckInProgress = false
-
+                self.isUsernameAvailable = false
+                
                 if id == self.usernameCheckId {
-                    self.resetUsernameCheckUI()
+                    self.onUsernameCheckingOff?(false)
+                    self.onDataChanged?(isSignupAvailable())
                     self.logger.logAPI(error, endpoint: "isUserExists")
                     self.onError?(error.localizedDescription)
                 }
@@ -106,9 +167,11 @@ final class RegistrationViewModel: BaseViewModel, RegistrationViewModelProtocol 
                 self.startNextUsernameCheckIfNeeded()
             } catch {
                 self.isUsernameCheckInProgress = false
-
+                self.isUsernameAvailable = false
+                
                 if id == self.usernameCheckId {
-                    self.resetUsernameCheckUI()
+                    self.onUsernameCheckingOff?(false)
+                    self.onDataChanged?(isSignupAvailable())
                     self.logger.error(error, context: "isUserExists")
                     self.onError?(error.localizedDescription)
                 }
@@ -118,48 +181,48 @@ final class RegistrationViewModel: BaseViewModel, RegistrationViewModelProtocol 
         }
     }
     
-    private func resetUsernameCheckUI() {
-        onUsernameChecking?(false)
-        onUsernameChecked?(false)
+    /// Сводная проверка готовности формы для UI (цвет кнопки).
+    ///
+    /// Намеренно проверяет только НИЖНИЕ границы полей: верхние (tooLong)
+    /// не учитываются, чтобы не блокировать кнопку при вставке длинного
+    /// текста — реальный `validate(...)` прогонится при отправке.
+    ///
+    /// ВАЖНО: при изменении набора правил синхронизировать с `validate(...)`.
+    private func isSignupAvailable() -> Bool {
+        return (
+            isUsernameAvailable &&
+            model.firstName.count >= Settings.IdentityTextView.nameClosedRange.lowerBound &&
+            model.lastName.count >= Settings.IdentityTextView.nameClosedRange.lowerBound &&
+            model.username.count >= Settings.IdentityTextView.usernameClosedRange.lowerBound &&
+            model.password.count >= Settings.IdentityTextView.passwordClosedRange.lowerBound &&
+            model.password == model.confirm &&
+            model.isAgreementAccepted
+        )
     }
     
-    func signupTapped(
-        isActive: Bool,
-        firstName: String,
-        lastName: String,
-        username: String,
-        password: String,
-        confirm: String,
-        isAgreementAccepted: Bool
-    ) {
-        if isActive {
-            signupActiveTapped(
-                firstName: firstName,
-                lastName: lastName,
-                username: username,
-                password: password,
-                confirm: confirm,
-                isAgreementAccepted: isAgreementAccepted
-            )
-        } else {
-            signupInactiveTapped(
-                firstName: firstName,
-                lastName: lastName,
-                username: username,
-                password: password,
-                confirm: confirm,
-                isAgreementAccepted: isAgreementAccepted
-            )
-        }
+    /// Кнопка «Зарегистрироваться» тапабельна в обоих состояниях.
+    /// - active:   валидация + отправка формы (`signupActiveTapped`)
+    /// - inactive: форма не отправляется, но пользователю подсвечиваются
+    ///             все незаполненные/невалидные поля (`signupInactiveTapped`).
+    ///
+    /// Ветвление идёт по `signupAvailable` и пересчитывается прямо здесь.
+    func signupTapped() {
+        // свежий расчёт — кэш мог устареть (программное изменение свитча, autofill, гонка с проверкой ника)
+        signupAvailable = isSignupAvailable()
+        signupAvailable ? signupActiveTapped() : signupInactiveTapped()
     }
     
-    private func signupActiveTapped(firstName: String, lastName: String, username: String, password: String, confirm: String, isAgreementAccepted: Bool) {
+    /// Ветка «active»: `isSignupAvailable` уже гарантирует длины/совпадение/
+    /// согласие, но прогоняем `validate` повторно — на случай:
+    /// - гонок с autofill/программным изменением полей;
+    /// - расширения правил (например, `tooLong`), которые UI-кэш не учитывает.
+    private func signupActiveTapped() {
         super.onSetLoading?(true)
-        let errors = validate(firstName: firstName, lastName: lastName,username: username,password: password, confirm: confirm, isAgreementAccepted: isAgreementAccepted)
+        let errors = validate()
         if !errors.isEmpty {
             var messageError = ""
             for validationError in errors {
-                logger.crashOnValidation(validationError, in: "RegistrationViewModel.signupActiveTapped")
+                logger.crashOnValidation(validationError, in: "\(type(of: self)).\(#function)")
                 messageError += validationError.userFacingMessage + "\n"
             }
             self.onSetLoading?(false)
@@ -179,39 +242,41 @@ final class RegistrationViewModel: BaseViewModel, RegistrationViewModelProtocol 
         }
     }
     
-    func signupInactiveTapped(firstName: String, lastName: String, username: String, password: String, confirm: String, isAgreementAccepted: Bool) {
+    /// Ветка «inactive»: собираем варнинги по ВСЕМ полям сразу,
+    /// чтобы пользователь видел полный список того, что нужно дозаполнить.
+    private func signupInactiveTapped() {
         var warnings: [IdentityWarning] = []
-        if firstName.isEmpty {
+        if model.firstName.isEmpty {
             warnings.append(IdentityWarning(warning: .empty, textViewType: .firstName))
-        } else if firstName.count < Settings.IdentityTextView.nameClosedRange.lowerBound {
+        } else if model.firstName.count < Settings.IdentityTextView.nameClosedRange.lowerBound {
             warnings.append(IdentityWarning(warning: .tooShort(val: Settings.IdentityTextView.nameClosedRange.lowerBound), textViewType: .firstName) )
         }
     
-        if lastName.isEmpty {
+        if model.lastName.isEmpty {
             warnings.append(IdentityWarning(warning: .empty, textViewType: .lastName))
-        } else if lastName.count < Settings.IdentityTextView.nameClosedRange.lowerBound {
+        } else if model.lastName.count < Settings.IdentityTextView.nameClosedRange.lowerBound {
             warnings.append(IdentityWarning(warning: .tooShort(val: Settings.IdentityTextView.nameClosedRange.lowerBound), textViewType: .lastName))
         }
         
-        if username.isEmpty {
+        if model.username.isEmpty {
             warnings.append(IdentityWarning(warning: .empty, textViewType: .username))
-        } else if username.count < Settings.IdentityTextView.usernameClosedRange.lowerBound {
+        } else if model.username.count < Settings.IdentityTextView.usernameClosedRange.lowerBound {
             warnings.append(IdentityWarning(warning: .tooShort(val: Settings.IdentityTextView.usernameClosedRange.lowerBound), textViewType: .username))
         }
         
-        if password.isEmpty {
+        if model.password.isEmpty {
             warnings.append(IdentityWarning(warning: .empty, textViewType: .password))
-        } else if password.count < Settings.IdentityTextView.passwordClosedRange.lowerBound {
+        } else if model.password.count < Settings.IdentityTextView.passwordClosedRange.lowerBound {
             warnings.append(IdentityWarning(warning: .tooShort(val: Settings.IdentityTextView.passwordClosedRange.lowerBound), textViewType: .password))
-        } else if password != confirm {
+        } else if model.password != model.confirm {
             warnings.append(IdentityWarning(warning: .confirmNotMatch, textViewType: .confirm))
         }
         
-        if confirm.isEmpty {
+        if model.confirm.isEmpty {
             warnings.append(IdentityWarning(warning: .empty, textViewType: .confirm))
         }
         
-        if !isAgreementAccepted {
+        if !model.isAgreementAccepted {
             warnings.append(IdentityWarning(warning: .agreementNotSigned, textViewType: nil))
         }
         
@@ -243,31 +308,24 @@ final class RegistrationViewModel: BaseViewModel, RegistrationViewModelProtocol 
 
     // MARK: - Validation
 
-    private func validate(
-        firstName: String,
-        lastName: String,
-        username: String,
-        password: String,
-        confirm: String,
-        isAgreementAccepted: Bool
-    ) -> [ValidationError] {
+    private func validate() -> [ValidationError] {
         var errors: [ValidationError] = []
-        if let error = validate(range: Settings.IdentityTextView.nameClosedRange, source: .firstName, text: firstName) {
+        if let error = validate(range: Settings.IdentityTextView.nameClosedRange, source: .firstName, text: model.firstName) {
             errors.append(error)
         }
-        if let error = validate(range: Settings.IdentityTextView.nameClosedRange, source: .lastName, text: lastName) {
+        if let error = validate(range: Settings.IdentityTextView.nameClosedRange, source: .lastName, text: model.lastName) {
             errors.append(error)
         }
-        if let error = validate(range: Settings.IdentityTextView.usernameClosedRange, source: .username, text: username) {
+        if let error = validate(range: Settings.IdentityTextView.usernameClosedRange, source: .username, text: model.username) {
             errors.append(error)
         }
-        if let error = validate(range: Settings.IdentityTextView.passwordClosedRange, source: .password, text: password) {
+        if let error = validate(range: Settings.IdentityTextView.passwordClosedRange, source: .password, text: model.password) {
             errors.append(error)
         }
-        if let error = validate(range: Settings.IdentityTextView.passwordClosedRange, source: .confirm, text: confirm) {
+        if let error = validate(range: Settings.IdentityTextView.passwordClosedRange, source: .confirm, text: model.confirm) {
             errors.append(error)
         }
-        if password != confirm {
+        if model.password != model.confirm {
             errors.append(
                 ValidationError(
                     source: .confirm,
@@ -275,11 +333,11 @@ final class RegistrationViewModel: BaseViewModel, RegistrationViewModelProtocol 
                 )
             )
         }
-        if !isAgreementAccepted {
+        if !model.isAgreementAccepted {
             errors.append(
                 ValidationError(
                     source: .switchAgreement,
-                    reason: .invalidValue(str: String(isAgreementAccepted))
+                    reason: .invalidValue(str: String(model.isAgreementAccepted))
                 )
             )
         }
